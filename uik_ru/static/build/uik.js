@@ -974,7 +974,15 @@ $.fn.imagesLoaded = function( callback ) {
             this.buildMap();
             this.buildLayerManager();
             this.buildLayers();
+
+            UIK.map.lockHistory = false;
+            UIK.map.extentHistory = [];
+            UIK.map.extentHistoryPointer = -1;
+            this.pushCurrentExtent();
+
             this.bindEvents();
+
+            UIK.alerts.showAlert('historyShortcuts');
         },
 
         bindEvents: function () {
@@ -985,6 +993,7 @@ $.fn.imagesLoaded = function( callback ) {
                     zoom = map.getZoom();
 
                 context.setLastExtentToCookie(center, zoom);
+                UIK.map.pushCurrentExtent();
                 UIK.view.$document.trigger('/uik/permalink/update', [center, zoom]);
                 UIK.view.$document.trigger('/uik/map/updateAllLayers');
 
@@ -1007,6 +1016,63 @@ $.fn.imagesLoaded = function( callback ) {
                 vm.isPopupOpened = false;
                 vm.mapLayers.select.clearLayers();
             });
+            $('#map').keydown(function(event) {
+                if (event.keyCode == 80) {
+                    // english letter 'p'
+                    UIK.map.backwardExtentHistory();
+                }
+                if (event.keyCode == 78) {  
+                    // english letter 'n'
+                    UIK.map.forwardExtentHistory();
+                }
+            });            
+        },
+
+        pushCurrentExtent: function () {
+            // if (UIK.map.lockHistory) {
+            //     return;
+            // }
+            var newExtent = [UIK.viewmodel.map.getCenter(), UIK.viewmodel.map.getZoom()];
+
+            if (UIK.map.extentHistoryPointer >= 0 && 
+                UIK.map.extentHistory[UIK.map.extentHistoryPointer][0].lat == newExtent[0].lat &&
+                UIK.map.extentHistory[UIK.map.extentHistoryPointer][0].lng == newExtent[0].lng &&
+                UIK.map.extentHistory[UIK.map.extentHistoryPointer][1] == newExtent[1]) {
+                return;
+            }
+
+            while (UIK.map.extentHistory.length - 1 > UIK.map.extentHistoryPointer) {
+                UIK.map.extentHistory.pop();
+            }
+
+            UIK.map.extentHistory.push(newExtent);
+            UIK.map.extentHistoryPointer++;
+        },
+
+        backwardExtentHistory: function () {
+            // if (UIK.map.lockHistory) {
+            //     return;
+            // }
+            if (UIK.map.extentHistoryPointer > 0) {
+                UIK.map.extentHistoryPointer -= 1;
+                var prevExtent = UIK.map.extentHistory[UIK.map.extentHistoryPointer];
+                UIK.map.lockHistory = true;
+                UIK.viewmodel.map.setView(prevExtent[0], prevExtent[1]);
+                UIK.map.lockHistory = false;
+            }
+        },
+
+        forwardExtentHistory: function () {
+            // if (UIK.map.lockHistory) {
+            //     return;
+            // }
+            if (UIK.map.extentHistoryPointer + 1 < UIK.map.extentHistory.length) {
+                UIK.map.extentHistoryPointer += 1;
+                var nextExtent = UIK.map.extentHistory[UIK.map.extentHistoryPointer];
+                UIK.map.lockHistory = true;
+                UIK.viewmodel.map.setView(nextExtent[0], nextExtent[1]);                
+                UIK.map.lockHistory = false;
+            }
         },
 
         buildMap: function () {
@@ -2272,4 +2338,3 @@ UIK.templates['alertsTemplate'] = Mustache.compile('<div id="alert_{{id}}" class
 UIK.templates['userLogsTemplate'] = Mustache.compile('<table class="table table-striped logs"> <caption>Общая статистика</caption> <tr> <th>Показатель</th> <th>Значение</th> </tr> <tr> <td>Всего УИКов</td> <td class="stop">{{count_all}}</td> </tr> <tr> <td>Отредактировано УИКов</td> <td class="stop">{{count_editable}}</td> </tr> <tr> <td>Отредактировано, %</td> <td class="stop">{{percent}}</td> </tr> </table> <table class="table table-striped logs"> <caption>Статистика по пользователям</caption> <tr> <th>Пользователь</th> <th>Кол-во УИКов</th> </tr> {{#user_logs}} <tr> <td>{{user_name}}</td> <td class="stop">{{count_uiks}}</td> </tr> {{/user_logs}} </table>');
 UIK.templates['uik2012PopupInfoTemplate'] = Mustache.compile('<table class="table table-striped"> <tr> <td>Номер УИКа</td> <td>{{uikp.name}}</td> </tr> <tr> <td>Адрес</td> <td>{{uikp.address}}</td> </tr> <tr> <td>Комментарий</td> <td>{{uikp.comment}}</td> </tr> </table> ');
 UIK.templates['searchResultsTemplate'] = Mustache.compile('<ul class="{{cssClass}}"> {{#uiks}} <li data-lat={{lat}} data-lon={{lon}} data-id={{id}}> <span>{{name}}</span> {{addr}} <a class="target" title="Перейти к УИКу"></a> {{#isAuth}}<a class="edit" title="Редактировать УИК"></a>{{/isAuth}} </li> {{/uiks}} </ul>');
-UIK.templates['.subl878'] = Mustache.compile('<ul><li>v{{num}} {{text}} {{time}}</li></ul>');
